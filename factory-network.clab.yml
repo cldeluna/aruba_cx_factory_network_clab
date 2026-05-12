@@ -34,7 +34,7 @@ topology:
 
   kinds:
     ceos:
-      image: ceosimage:latest
+      image: ceos:latest
     aruba_aoscx:
       image: vrnetlab/aruba_arubaos-cx:latest
 
