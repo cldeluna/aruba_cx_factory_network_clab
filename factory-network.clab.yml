@@ -25,20 +25,16 @@
 #   Aruba AOS-CX: vrnetlab/aruba_arubaos-cx:latest  (build via hellt/vrnetlab)
 # =============================================================================
 
-name: factory-network
-
-mgmt:
-  network: factory-mgmt
-  ipv4-subnet: 172.20.20.0/24
+name: aruba-factory-network
 
 topology:
-  defaults:
-    env:
-      CLAB_MGMT_VRF: management
+#  defaults:
+#    env:
+#      CLAB_MGMT_VRF: management
 
   kinds:
     ceos:
-      image: ceosimage:4.32.0F
+      image: ceosimage:latest
     aruba_aoscx:
       image: vrnetlab/aruba_arubaos-cx:latest
 
