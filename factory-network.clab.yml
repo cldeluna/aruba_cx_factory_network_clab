@@ -1,0 +1,113 @@
+# =============================================================================
+# Factory + Office Campus Network — Containerlab Topology
+# =============================================================================
+#
+# Architecture:
+#   - Arista cEOS MLAG core pair (L3 gateways via VARP)
+#   - 5x Aruba 6300M CX access switches (vrnetlab)
+#     - 2 office-focused (no manufacturing VLANs)
+#     - 3 manufacturing-focused (no office-only VLANs)
+#   - Each access switch dual-homed to both core switches via LACP/MLAG
+#
+# VLAN Plan:
+#   VLAN 10  — Laptops & Desktops        192.0.2.0/24      (office only)
+#   VLAN 20  — Mfg Systems (torque etc)   10.10.20.0/24     (mfg only)
+#   VLAN 30  — Mfg General                10.10.30.0/24     (mfg only)
+#   VLAN 40  — Building Automation         203.0.113.0/24    (shared)
+#   VLAN 50  — Digital Signage             198.51.100.0/24   (shared)
+#   VLAN 60  — Cameras                     10.10.60.0/24     (shared)
+#   VLAN 70  — Machine Vision              10.10.70.0/24     (mfg only)
+#   VLAN 99  — Management                  10.10.99.0/24     (all switches)
+#   VLAN 4094 — MLAG Peer (core only)      10.10.251.0/30
+#
+# Images — replace tags with your local builds:
+#   Arista cEOS:  ceosimage:4.32.0F   (import with: docker import cEOS-lab.tar ceosimage:4.32.0F)
+#   Aruba AOS-CX: vrnetlab/aruba_arubaos-cx:latest  (build via hellt/vrnetlab)
+# =============================================================================
+
+name: factory-network
+
+mgmt:
+  network: factory-mgmt
+  ipv4-subnet: 172.20.20.0/24
+
+topology:
+  defaults:
+    env:
+      CLAB_MGMT_VRF: management
+
+  kinds:
+    ceos:
+      image: ceosimage:4.32.0F
+    aruba_aoscx:
+      image: vrnetlab/aruba_arubaos-cx:latest
+
+  nodes:
+    # ===================== CORE LAYER (Arista MLAG) =====================
+    core1:
+      kind: ceos
+      mgmt-ipv4: 172.20.20.2
+      startup-config: configs/core1.cfg
+      env:
+        INTFTYPE: et
+
+    core2:
+      kind: ceos
+      mgmt-ipv4: 172.20.20.3
+      startup-config: configs/core2.cfg
+      env:
+        INTFTYPE: et
+
+    # ===================== OFFICE ACCESS LAYER ==========================
+    office-sw1:
+      kind: aruba_aoscx
+      mgmt-ipv4: 172.20.20.11
+      startup-config: configs/office-sw1.cfg
+
+    office-sw2:
+      kind: aruba_aoscx
+      mgmt-ipv4: 172.20.20.12
+      startup-config: configs/office-sw2.cfg
+
+    # ===================== MANUFACTURING ACCESS LAYER ===================
+    mfg-sw1:
+      kind: aruba_aoscx
+      mgmt-ipv4: 172.20.20.21
+      startup-config: configs/mfg-sw1.cfg
+
+    mfg-sw2:
+      kind: aruba_aoscx
+      mgmt-ipv4: 172.20.20.22
+      startup-config: configs/mfg-sw2.cfg
+
+    mfg-sw3:
+      kind: aruba_aoscx
+      mgmt-ipv4: 172.20.20.23
+      startup-config: configs/mfg-sw3.cfg
+
+  links:
+    # ------------- MLAG Peer Link (2-member port-channel) ---------------
+    - endpoints: ["core1:eth1", "core2:eth1"]
+    - endpoints: ["core1:eth2", "core2:eth2"]
+
+    # ------------- Office Switch Uplinks (dual-homed to MLAG) ----------
+    # office-sw1: eth1→core1, eth2→core2  (MLAG 10 on Arista side)
+    - endpoints: ["core1:eth3", "office-sw1:eth1"]
+    - endpoints: ["core2:eth3", "office-sw1:eth2"]
+
+    # office-sw2: eth1→core1, eth2→core2  (MLAG 20 on Arista side)
+    - endpoints: ["core1:eth4", "office-sw2:eth1"]
+    - endpoints: ["core2:eth4", "office-sw2:eth2"]
+
+    # ------------- Manufacturing Switch Uplinks (dual-homed to MLAG) ---
+    # mfg-sw1: eth1→core1, eth2→core2  (MLAG 30 on Arista side)
+    - endpoints: ["core1:eth5", "mfg-sw1:eth1"]
+    - endpoints: ["core2:eth5", "mfg-sw1:eth2"]
+
+    # mfg-sw2: eth1→core1, eth2→core2  (MLAG 40 on Arista side)
+    - endpoints: ["core1:eth6", "mfg-sw2:eth1"]
+    - endpoints: ["core2:eth6", "mfg-sw2:eth2"]
+
+    # mfg-sw3: eth1→core1, eth2→core2  (MLAG 50 on Arista side)
+    - endpoints: ["core1:eth7", "mfg-sw3:eth1"]
+    - endpoints: ["core2:eth7", "mfg-sw3:eth2"]
